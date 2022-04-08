@@ -1,6 +1,6 @@
 import axios from "axios";
-//import Auth from './models/auth';
-import calendarInfo from "./models/Calendars";
+
+import calendarInfoTable from "./models/Calendars";
 
 const mongoose = require("mongoose");
 const moment = require("moment");
@@ -12,10 +12,13 @@ export const step1CalendarWorkFlow = async (
   try {
     await mongoose.connect(`mongodb+srv://${mongoSever}/${mongoDBName}`);
     console.log("connected to the DB");
-    const calendarsInfo = await calendarInfo.find();
+    const calendarsRecords = await calendarInfoTable.find();
 
-    for (const calendar of calendarsInfo) {
-    
+    for (const calendarRecord of calendarsRecords) {
+      const { email, token, loginUserUsuario, calendarsInfo } = calendarRecord;
+      console.log(token);
+      console.log(calendarsInfo);
+      //Run subscriptions
     }
   } catch (err) {
     console.log(err);

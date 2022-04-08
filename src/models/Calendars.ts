@@ -17,11 +17,13 @@ class CalendarInfo {
 
 class Calendar {
   @prop({ type: String })
-  owner: string;
+  email: string;
   @prop({ type: String })
   loginUserUsuario: string;
   @prop({ type: Boolean })
   isActive: boolean;
+  @prop({ type: String })
+  token: string;
   @prop({ type: [CalendarInfo] })
   calendarsInfo: CalendarInfo[];
 }
