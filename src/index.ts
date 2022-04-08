@@ -1,6 +1,7 @@
 import axios from "axios";
 import crypto from "crypto";
 import calendarInfoTable from "./models/Calendars";
+import GenericHandlerErrorRes from "./interfaces/genericHandlerErroRes";
 
 const mongoose = require("mongoose");
 const moment = require("moment");
@@ -31,21 +32,36 @@ export const step1CalendarWorkFlow = async (
         const uuid = crypto.randomUUID();
         console.log(uuid);
 
-        const subWatcher = createWatcher(uuid, webhook, calendarId, token);
+        const subWatcher = createWatcher(uuid, webhook, calendarId, token).then(
+          async (res) => {
+            if (res.error.isError) {
+              const errorSubscriptionMsg = res.error.errorMsg;
+              console.log(
+                "Eror al crear la subscription " + errorSubscriptionMsg
+              );
+
+              return;
+            }
+
+            caledObj.channelId = uuid;
+            //console.log(caledObj);
+
+            return calendarRecord;
+            //await calendarRecord.save();
+          }
+        );
         arraySubsPromises.push(subWatcher);
       }
       console.log("Vamos por otro usuario");
       //Run subscriptions
     }
 
-    await Promise.allSettled(arraySubsPromises);
+    const subInfoData = await Promise.allSettled(arraySubsPromises);
     console.log("All promises set");
   } catch (err) {
     console.log(err);
   }
 };
-
-const rer = () => {};
 
 export const createWatcher = async (
   id: string,
@@ -53,9 +69,13 @@ export const createWatcher = async (
   calendarName: string,
   token: string
 ) => {
+  const response: GenericHandlerErrorRes = {
+    response: "",
+    error: { isError: false, errorMsg: "" },
+  };
   const watcherUri = `https://www.googleapis.com/calendar/v3/calendars/${calendarName}/events/watch`;
   /* const tomorrow = moment().add(1, "days").add(10, "minutes"); */
-  const tomorrow = moment().add(3, "minutes"); //for testing a subscription only for 5 minutes
+  const tomorrow = moment().add(1, "minutes"); //for testing a subscription only for 5 minutes
 
   const tommowUnix = tomorrow.valueOf();
   //console.log(tommowUnix);
@@ -75,7 +95,10 @@ export const createWatcher = async (
   //console.log(data, watcherUri);
   try {
     const res = await axios.post(watcherUri, data, options);
-    console.log(res.data);
+    //console.log(res.data);
+
+    response.response = "SUBCRIPTION MADE SUCCESSFULLY";
+    return response;
   } catch (error: any) {
     //const error = Any err;
     /* console.log(err.response.data);
@@ -85,7 +108,11 @@ export const createWatcher = async (
     }
 
     else message = String(error); */
-    console.log(error.response);
+    const errMsg = error?.response?.data;
+    console.log(errMsg);
+    response.error.isError = true;
+    response.error.errorMsg = errMsg;
+    return response;
   }
 };
 

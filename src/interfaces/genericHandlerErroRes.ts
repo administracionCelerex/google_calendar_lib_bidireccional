@@ -5,3 +5,5 @@ interface GenericHandlerErrorRes {
     errorMsg: string;
   };
 }
+
+export default GenericHandlerErrorRes;
