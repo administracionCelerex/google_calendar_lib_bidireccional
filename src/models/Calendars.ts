@@ -1,12 +1,12 @@
 import { prop, getModelForClass } from "@typegoose/typegoose";
 
-class CalendarInfo {
+export class CalendarInfo {
   @prop({ type: String })
   name: string;
   @prop({ type: String })
-  resourceId: string;
+  calendarId: string;
   @prop({ type: String })
-  idSubscription: string;
+  channelId: string;
   @prop({ type: String })
   description: string;
   @prop({ type: String })
@@ -21,7 +21,7 @@ class Calendar {
   @prop({ type: String })
   loginUserUsuario: string;
   @prop({ type: Boolean })
-  isActive: boolean;
+  isActiveAll: boolean;
   @prop({ type: String })
   token: string;
   @prop({ type: [CalendarInfo] })
