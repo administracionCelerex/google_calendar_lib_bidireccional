@@ -1,5 +1,7 @@
+import GoogleSubResponse from "./googleSubcriptionResponse";
+
 interface GenericHandlerErrorRes {
-  response: string;
+  response: GoogleSubResponse;
   error: {
     isError: boolean;
     errorMsg: string;

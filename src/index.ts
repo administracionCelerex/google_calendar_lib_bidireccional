@@ -2,6 +2,7 @@ import axios from "axios";
 import crypto from "crypto";
 import calendarInfoTable from "./models/Calendars";
 import GenericHandlerErrorRes from "./interfaces/genericHandlerErroRes";
+import GoogleSubResponse from "./interfaces/googleSubcriptionResponse";
 
 const mongoose = require("mongoose");
 const moment = require("moment");
@@ -14,7 +15,8 @@ export const step1CalendarWorkFlow = async (
   try {
     await mongoose.connect(`mongodb+srv://${mongoSever}/${mongoDBName}`);
     console.log("connected to the DB");
-    const arraySubsPromises = [];
+    const arrayPromisesWatcher = [];
+    const arrayPromisesToSaveAllCalendarId = [];
     const calendarsRecords = await calendarInfoTable.find();
 
     for (const calendarRecord of calendarsRecords) {
@@ -42,21 +44,28 @@ export const step1CalendarWorkFlow = async (
 
               return;
             }
-
+            const { expiration } = res.response;
+            //const dateOfExpi = moment(expiration);
+            console.log(`${expiration}`);
             caledObj.channelId = uuid;
-            //console.log(caledObj);
 
-            return calendarRecord;
-            //await calendarRecord.save();
+            return;
           }
         );
-        arraySubsPromises.push(subWatcher);
+        arrayPromisesWatcher.push(subWatcher);
       }
+      const subInfoData = Promise.allSettled(arrayPromisesWatcher).then(
+        async () => {
+          await calendarRecord.save();
+          console.log("Saved");
+        }
+      );
+      arrayPromisesToSaveAllCalendarId.push(subInfoData);
       console.log("Vamos por otro usuario");
       //Run subscriptions
     }
 
-    const subInfoData = await Promise.allSettled(arraySubsPromises);
+    await Promise.allSettled(arrayPromisesToSaveAllCalendarId);
     console.log("All promises set");
   } catch (err) {
     console.log(err);
@@ -70,7 +79,7 @@ export const createWatcher = async (
   token: string
 ) => {
   const response: GenericHandlerErrorRes = {
-    response: "",
+    response: {},
     error: { isError: false, errorMsg: "" },
   };
   const watcherUri = `https://www.googleapis.com/calendar/v3/calendars/${calendarName}/events/watch`;
@@ -94,10 +103,11 @@ export const createWatcher = async (
   };
   //console.log(data, watcherUri);
   try {
-    const res = await axios.post(watcherUri, data, options);
+    const res = await axios.post<GoogleSubResponse>(watcherUri, data, options);
+    console.log(res.data);
     //console.log(res.data);
 
-    response.response = "SUBCRIPTION MADE SUCCESSFULLY";
+    response.response = res.data;
     return response;
   } catch (error: any) {
     //const error = Any err;
