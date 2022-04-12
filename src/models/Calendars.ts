@@ -55,6 +55,8 @@ export class CalendarInfo {
   dueDate: string;
   @prop({ type: Boolean })
   isActive: boolean;
+  @prop({ type: String })
+  watchedResourceId: string;
 }
 
 class Calendar {

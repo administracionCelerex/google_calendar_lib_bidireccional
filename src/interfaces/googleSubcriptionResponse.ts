@@ -3,7 +3,7 @@ interface GoogleSubResponse {
   id?: string;
   resourceId?: string;
   resourceUri?: string;
-  expiration?: string;
+  expiration: string;
 }
 
 export default GoogleSubResponse;

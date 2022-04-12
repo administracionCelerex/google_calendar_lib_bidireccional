@@ -19,7 +19,7 @@ export const step1CalendarWorkFlow = async (
     const arrayPromisesToSaveAllCalendarId = [];
     const calendarsRecords = await calendarInfoTable.find();
     console.log(calendarsRecords);
-    return;
+
     for (const calendarRecord of calendarsRecords) {
       const { email, token, loginUserUsuario, calendarsInfo, isActiveAll } =
         calendarRecord;
@@ -45,11 +45,13 @@ export const step1CalendarWorkFlow = async (
 
               return;
             }
-            const { expiration } = res.response;
-            //const dateOfExpi = moment(expiration);
-            console.log(`${expiration}`);
-            caledObj.channelId = uuid;
+            const { expiration, resourceId } = res.response;
 
+            const dateOfExpi = moment(+expiration);
+
+            caledObj.channelId = uuid;
+            caledObj.watchedResourceId = resourceId as string;
+            caledObj.dueDate = dateOfExpi.format("MM/DD/YYYY HH:mm:ss");
             return;
           }
         );
@@ -80,12 +82,18 @@ export const createWatcher = async (
   token: string
 ) => {
   const response: GenericHandlerErrorRes = {
-    response: {},
+    response: {
+      expiration: "",
+      id: "",
+      kind: "",
+      resourceId: "",
+      resourceUri: "",
+    },
     error: { isError: false, errorMsg: "" },
   };
   const watcherUri = `https://www.googleapis.com/calendar/v3/calendars/${calendarName}/events/watch`;
   /* const tomorrow = moment().add(1, "days").add(10, "minutes"); */
-  const tomorrow = moment().add(20, "minutes"); //for testing a subscription only for 5 minutes
+  const tomorrow = moment().add(1, "hour"); //for testing a subscription only for 5 minutes
 
   const tommowUnix = tomorrow.valueOf();
   //console.log(tommowUnix);
