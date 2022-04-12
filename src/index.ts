@@ -18,7 +18,8 @@ export const step1CalendarWorkFlow = async (
     const arrayPromisesWatcher = [];
     const arrayPromisesToSaveAllCalendarId = [];
     const calendarsRecords = await calendarInfoTable.find();
-
+    console.log(calendarsRecords);
+    return;
     for (const calendarRecord of calendarsRecords) {
       const { email, token, loginUserUsuario, calendarsInfo, isActiveAll } =
         calendarRecord;
@@ -84,7 +85,7 @@ export const createWatcher = async (
   };
   const watcherUri = `https://www.googleapis.com/calendar/v3/calendars/${calendarName}/events/watch`;
   /* const tomorrow = moment().add(1, "days").add(10, "minutes"); */
-  const tomorrow = moment().add(1, "minutes"); //for testing a subscription only for 5 minutes
+  const tomorrow = moment().add(20, "minutes"); //for testing a subscription only for 5 minutes
 
   const tommowUnix = tomorrow.valueOf();
   //console.log(tommowUnix);
