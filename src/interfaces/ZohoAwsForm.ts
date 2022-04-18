@@ -1,7 +1,7 @@
 export interface ZohoAwsForm {
   affectedtype: string;
   accion: string;
-  externalId: string;
+  externalid: string | undefined;
   owner: string;
   serviceProvider: string;
   helpInfo: string;

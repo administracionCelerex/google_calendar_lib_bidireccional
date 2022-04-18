@@ -209,6 +209,7 @@ export const authorize = async (
 
 const googleListEventsCallback = async (
   res: GaxiosResponse<calendar_v3.Schema$Events> | null | undefined,
+  calendarId: string | undefined,
   email: string,
   zohoApiObj: ZOHOAPIOBJECT
 ) => {
@@ -218,7 +219,7 @@ const googleListEventsCallback = async (
   if (items?.length) {
     console.log(`Upcoming ${items.length} events:`);
     //res?.data.
-    await sendToZoho(items, email, zohoApiObj);
+    await sendToZoho(items, email, calendarId, zohoApiObj);
   } else {
     console.log("No new events to sync.");
   }
@@ -292,7 +293,12 @@ const run = async (
                   return;
                 }
               } else {
-                events = await googleListEventsCallback(res, email, zohoApiObj);
+                events = await googleListEventsCallback(
+                  res,
+                  calendarId,
+                  email,
+                  zohoApiObj
+                );
                 //console.log(events);
                 pageToken = events?.nextPageToken;
                 resolve(events);
@@ -322,6 +328,7 @@ const run = async (
 const sendToZoho = async (
   items: calendar_v3.Schema$Event[] | undefined,
   email: string,
+  calendarId: string | undefined,
   zohoApiObj: ZOHOAPIOBJECT
 ) => {
   console.log("Send to zoho ");
@@ -338,7 +345,7 @@ const sendToZoho = async (
     return {
       affectedtype: "CALENDAR",
       accion: "UPDATE",
-      externalId: "EXTERNALiD",
+      externalid: calendarId,
       owner: email,
       serviceProvider: "GMAIL",
       helpInfo: `Evento "${item.summary}" fue CREADO/ACTUALIZADO`,
