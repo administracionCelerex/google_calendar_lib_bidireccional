@@ -4,8 +4,15 @@ import calendarInfoTable from "./models/Calendars";
 import GenericHandlerErrorRes from "./interfaces/genericHandlerErroRes";
 import GoogleSubResponse from "./interfaces/googleSubcriptionResponse";
 
+import { calendar_v3, google } from "googleapis";
+import { OAuth2Client } from "google-auth-library";
+import { GaxiosResponse, GaxiosError } from "gaxios";
+
 const mongoose = require("mongoose");
 const moment = require("moment");
+
+const MINDAYS = 1;
+const MAXDAYS = 30;
 
 export const step1CalendarWorkFlow = async (
   mongoSever: string,
@@ -135,6 +142,167 @@ export const createWatcher = async (
   }
 };
 
+//GOOGLE SYNC TOKEN
 
+export const authorize = async (
+  calendarId: string | undefined,
+  email: string,
+  mongoSever: string,
+  mongoDBName: string
+) => {
+  const oAuth2Client = new google.auth.OAuth2();
 
+  try {
+    await mongoose.connect(`mongodb+srv://${mongoSever}/${mongoDBName}`);
 
+    const calendarRecord = await calendarInfoTable
+      .findOne({ email })
+      .select({ token: 1, calendarsInfo: 1 })
+      .exec();
+    console.log("connected to DB");
+
+    //console.log(calendarRecord);
+
+    if (!calendarRecord) {
+      console.log("email does not exist ");
+      return;
+    }
+
+    const { token, calendarsInfo } = calendarRecord;
+    const calendarUpdatedIndex = calendarsInfo.findIndex(
+      (caleInf) => caleInf.calendarId === calendarId
+    );
+    if (calendarUpdatedIndex == -1) {
+      return;
+    }
+    const { syncToken } = calendarRecord.calendarsInfo[calendarUpdatedIndex];
+    const credentials = { access_token: token };
+    // Check if we have previously stored a token.
+
+    oAuth2Client.setCredentials(credentials);
+
+    const eventsGmail = await run(oAuth2Client, calendarId, syncToken, email);
+    const newSyncToken = eventsGmail?.nextSyncToken;
+    console.log(newSyncToken);
+    calendarsInfo[calendarUpdatedIndex].syncToken = newSyncToken
+      ? newSyncToken.toString()
+      : "null";
+
+    await calendarRecord.save();
+    console.log("saved");
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+//Google Callback
+
+const googleListEventsCallback = async (
+  res: GaxiosResponse<calendar_v3.Schema$Events> | null | undefined,
+  email: string
+) => {
+  let events: calendar_v3.Schema$Events | undefined;
+  events = res?.data;
+  const items = events?.items;
+  if (items?.length) {
+    console.log(`Upcoming ${items.length} events:`);
+    //res?.data.
+    //await sendToZoho(items, email);
+  } else {
+    console.log("No new events to sync.");
+  }
+
+  return events;
+};
+
+//RUN
+
+const run = async (
+  auth: OAuth2Client,
+  calendarId: string | undefined,
+  syncTokenOld: string | null,
+  email: string
+) => {
+  const calendar = google.calendar({ version: "v3", auth });
+  const timeMin = moment().subtract(MINDAYS, "days").toDate().toISOString();
+  const timeMax = moment().add(MAXDAYS, "days").toDate().toISOString();
+  //console.log(timeMin);
+  let requestParams = {};
+  // Load the sync token stored from the last execution, if any.
+  const syncToken =
+    syncTokenOld?.trim() == ("" || "null") ? null : syncTokenOld?.trim();
+  console.log("sync " + syncToken);
+  if (syncToken == null || syncToken == "") {
+    console.log("Performing full sync.");
+
+    // Set the filters you want to use during the full sync. Sync tokens aren't compatible with
+    // most filters, but you may want to limit your full sync to only a certain date range.
+    // In this example we are only syncing events up to a year old.
+
+    requestParams = { ...requestParams, ...{ timeMin, timeMax } };
+  } else {
+    console.log("Performing incremental sync.");
+    requestParams = { ...requestParams, ...{ syncToken } };
+  }
+
+  // Retrieve the events, one page at a time.
+  let pageToken = null;
+  let counter = -1;
+  let events: calendar_v3.Schema$Events | undefined;
+  do {
+    requestParams = { ...requestParams, ...{ pageToken } };
+    counter++;
+
+    const eventsPromise: calendar_v3.Schema$Events | undefined =
+      await new Promise((resolve, reject) => {
+        try {
+          calendar.events.list(
+            {
+              calendarId,
+              maxResults: 10,
+              ...requestParams,
+            },
+            async (err, res) => {
+              if (err) {
+                const errorGa = err as GaxiosError;
+                const statusCode = errorGa.code;
+                const messageErororGaxios = errorGa.message;
+                if (statusCode == "410") {
+                  console.log(messageErororGaxios);
+                  events = await run(auth, calendarId, null, email);
+                  resolve(events);
+                }
+                //manage error of Auth tokern
+
+                if (statusCode == "401") {
+                  console.log("Auth token invalid");
+                  resolve(events);
+                  return;
+                }
+              } else {
+                events = await googleListEventsCallback(res, email);
+                //console.log(events);
+                pageToken = events?.nextPageToken;
+                resolve(events);
+                //console.log(`Counter: ${counter}`);
+                /* if (!err) {
+                resolve(events);
+              } */
+              }
+            }
+          );
+        } catch (e) {}
+      });
+    console.log(pageToken);
+    events = eventsPromise;
+    //console.log("Events");
+  } while (pageToken != null);
+  console.log("end while");
+
+  //console.log(events);
+
+  //const newSynToken = events?.nextSyncToken;
+  //console.log(` new sync token ${newSynToken}`);
+
+  return events;
+};
