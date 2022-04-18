@@ -1,4 +1,9 @@
-import { mongoServer, mongoDbName, WEBHOOK } from "./constants/globals";
+import {
+  mongoServer,
+  mongoDbName,
+  WEBHOOK,
+  ZOHOOBJECT,
+} from "./constants/globals";
 
 //const fx = require("./src/index.js");
 import { authorize } from "./src/index";
@@ -15,7 +20,8 @@ authorize(
   "rhk1omkoa07v0p6m69n66mhn0c@group.calendar.google.com",
   "pruebasdevcelerex@gmail.com",
   mongoServer,
-  mongoDbName
+  mongoDbName,
+  ZOHOOBJECT
 ).then((res) => {
   console.log("End Authorize");
 });

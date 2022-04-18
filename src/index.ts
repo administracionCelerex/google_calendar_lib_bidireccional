@@ -9,6 +9,7 @@ import { ZohoAwsForm } from "./interfaces/ZohoAwsForm";
 import { calendar_v3, google } from "googleapis";
 import { OAuth2Client } from "google-auth-library";
 import { GaxiosResponse, GaxiosError } from "gaxios";
+import { ZOHOAPIOBJECT } from "./interfaces/ZohoApiObject";
 
 const mongoose = require("mongoose");
 const moment = require("moment");
@@ -150,7 +151,8 @@ export const authorize = async (
   calendarId: string | undefined,
   email: string,
   mongoSever: string,
-  mongoDBName: string
+  mongoDBName: string,
+  zohoApiObj: ZOHOAPIOBJECT
 ) => {
   const oAuth2Client = new google.auth.OAuth2();
 
@@ -183,7 +185,13 @@ export const authorize = async (
 
     oAuth2Client.setCredentials(credentials);
 
-    const eventsGmail = await run(oAuth2Client, calendarId, syncToken, email);
+    const eventsGmail = await run(
+      oAuth2Client,
+      calendarId,
+      syncToken,
+      email,
+      zohoApiObj
+    );
     const newSyncToken = eventsGmail?.nextSyncToken;
     console.log(newSyncToken);
     calendarsInfo[calendarUpdatedIndex].syncToken = newSyncToken
@@ -201,7 +209,8 @@ export const authorize = async (
 
 const googleListEventsCallback = async (
   res: GaxiosResponse<calendar_v3.Schema$Events> | null | undefined,
-  email: string
+  email: string,
+  zohoApiObj: ZOHOAPIOBJECT
 ) => {
   let events: calendar_v3.Schema$Events | undefined;
   events = res?.data;
@@ -209,7 +218,7 @@ const googleListEventsCallback = async (
   if (items?.length) {
     console.log(`Upcoming ${items.length} events:`);
     //res?.data.
-    await sendToZoho(items, email);
+    await sendToZoho(items, email, zohoApiObj);
   } else {
     console.log("No new events to sync.");
   }
@@ -223,7 +232,8 @@ const run = async (
   auth: OAuth2Client,
   calendarId: string | undefined,
   syncTokenOld: string | null,
-  email: string
+  email: string,
+  zohoApiObj: ZOHOAPIOBJECT
 ) => {
   const calendar = google.calendar({ version: "v3", auth });
   const timeMin = moment().subtract(MINDAYS, "days").toDate().toISOString();
@@ -271,7 +281,7 @@ const run = async (
                 const messageErororGaxios = errorGa.message;
                 if (statusCode == "410") {
                   console.log(messageErororGaxios);
-                  events = await run(auth, calendarId, null, email);
+                  events = await run(auth, calendarId, null, email, zohoApiObj);
                   resolve(events);
                 }
                 //manage error of Auth tokern
@@ -282,7 +292,7 @@ const run = async (
                   return;
                 }
               } else {
-                events = await googleListEventsCallback(res, email);
+                events = await googleListEventsCallback(res, email, zohoApiObj);
                 //console.log(events);
                 pageToken = events?.nextPageToken;
                 resolve(events);
@@ -311,7 +321,8 @@ const run = async (
 
 const sendToZoho = async (
   items: calendar_v3.Schema$Event[] | undefined,
-  email: string
+  email: string,
+  zohoApiObj: ZOHOAPIOBJECT
 ) => {
   console.log("Send to zoho ");
   if (!items) {
@@ -343,10 +354,7 @@ const sendToZoho = async (
     msg: "Fail to Send the info the CRM",
   };
 
-  const baseUrl = "creator.zoho.com";
-  const owner = "daniel4354";
-  const appLinkName = "crm-dev-2";
-  const awsForm = "formularioAWSAllData";
+  const { baseUrl, owner, appLinkName, awsForm } = zohoApiObj;
   const uri = `https://${baseUrl}/api/v2/${owner}/${appLinkName}/form/${awsForm}`;
 
   try {
