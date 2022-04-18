@@ -3,6 +3,8 @@ import crypto from "crypto";
 import calendarInfoTable from "./models/Calendars";
 import GenericHandlerErrorRes from "./interfaces/genericHandlerErroRes";
 import GoogleSubResponse from "./interfaces/googleSubcriptionResponse";
+import auth from "./models/auth";
+import { ZohoAwsForm } from "./interfaces/ZohoAwsForm";
 
 import { calendar_v3, google } from "googleapis";
 import { OAuth2Client } from "google-auth-library";
@@ -207,7 +209,7 @@ const googleListEventsCallback = async (
   if (items?.length) {
     console.log(`Upcoming ${items.length} events:`);
     //res?.data.
-    //await sendToZoho(items, email);
+    await sendToZoho(items, email);
   } else {
     console.log("No new events to sync.");
   }
@@ -305,4 +307,84 @@ const run = async (
   //console.log(` new sync token ${newSynToken}`);
 
   return events;
+};
+
+const sendToZoho = async (
+  items: calendar_v3.Schema$Event[] | undefined,
+  email: string
+) => {
+  console.log("Send to zoho ");
+  if (!items) {
+    return;
+  }
+
+  //call the api of zoho
+
+  const totalRecors = items.length;
+  const records: ZohoAwsForm[] = items.map((item) => {
+    console.log(item);
+
+    return {
+      affectedtype: "CALENDAR",
+      accion: "UPDATE",
+      externalId: "EXTERNALiD",
+      owner: email,
+      serviceProvider: "GMAIL",
+      helpInfo: `Evento "${item.summary}" fue CREADO/ACTUALIZADO`,
+      data: JSON.stringify(item),
+      dataOutlook: "",
+      hasBeenUsed: "false",
+      status: "",
+    };
+  });
+
+  let returnValue = {
+    isError: true, //cambiar a true
+    msg: "Fail to Send the info the CRM",
+  };
+
+  const baseUrl = "creator.zoho.com";
+  const owner = "daniel4354";
+  const appLinkName = "crm-dev-2";
+  const awsForm = "formularioAWSAllData";
+  const uri = `https://${baseUrl}/api/v2/${owner}/${appLinkName}/form/${awsForm}`;
+
+  try {
+    const objAuthZohoArray = await auth.find({ type: "zoho" });
+    if (objAuthZohoArray.length < 1) {
+      console.log("Obj Not Found");
+      return;
+    }
+    const objAuthZoho = objAuthZohoArray[0];
+
+    const token = objAuthZoho.token;
+
+    const limitRecords = 200;
+
+    const exMath = Math.floor((totalRecors - 1) / limitRecords);
+    const maxItera = exMath + 1;
+    for (let i = 0; i < maxItera; i++) {
+      const startArray = i * limitRecords;
+      const endArray = startArray + limitRecords;
+      const dataPart = records.slice(startArray, endArray);
+
+      const data = {
+        data: dataPart,
+      };
+
+      const response = await axios.post(uri, data, {
+        headers: {
+          Authorization: `Zoho-oauthtoken ${token}`,
+        },
+      });
+    }
+
+    returnValue.isError = false;
+    returnValue.msg = "Data was Sent Correctly";
+    console.log("Send CRM");
+    return returnValue;
+  } catch (err) {
+    console.log(err);
+    return returnValue;
+  }
 };

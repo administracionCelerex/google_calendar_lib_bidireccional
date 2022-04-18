@@ -9,6 +9,8 @@ class Auth {
   token: string;
   @prop({ type: String })
   email: string;
+  @prop({ type: String })
+  type: string;
 }
 
 const AuthModel = getModelForClass(Auth, {
