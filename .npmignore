@@ -1,0 +1,9 @@
+src/*
+dist/constants/*
+dist/app.js
+tsconfig.json
+tslint.json
+.prettierrc
+app.ts
+app.js
+constants/*
