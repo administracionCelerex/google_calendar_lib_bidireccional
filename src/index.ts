@@ -14,8 +14,9 @@ import { ZOHOAPIOBJECT } from "./interfaces/ZohoApiObject";
 const mongoose = require("mongoose");
 const moment = require("moment");
 
-const MINDAYS = 1;
-const MAXDAYS = 30;
+const MINDAYS = 7;
+const MAXDAYS = 7;
+const libraryVersion = "1.0.3";
 
 export const step1CalendarWorkFlow = async (
   mongoSever: string,
@@ -23,6 +24,7 @@ export const step1CalendarWorkFlow = async (
   webhook: string
 ) => {
   try {
+    console.log(`LIBVERSION: ${libraryVersion}`)
     await mongoose.connect(`mongodb+srv://${mongoSever}/${mongoDBName}`);
     console.log("connected to the DB");
     const arrayPromisesWatcher = [];
@@ -103,7 +105,7 @@ export const createWatcher = async (
   };
   const watcherUri = `https://www.googleapis.com/calendar/v3/calendars/${calendarName}/events/watch`;
   /* const tomorrow = moment().add(1, "days").add(10, "minutes"); */
-  const tomorrow = moment().add(1, "hour"); //for testing a subscription only for 5 minutes
+  const tomorrow = moment().add(1, "days"); //for testing a subscription only for 5 minutes
 
   const tommowUnix = tomorrow.valueOf();
   //console.log(tommowUnix);
